@@ -6,6 +6,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import team8.nugu.dto.TestResultRequestDto;
 import team8.nugu.dto.TestResultResponseDto;
+import team8.nugu.entity.Users;
 import team8.nugu.service.TestResultService;
 
 import java.util.List;

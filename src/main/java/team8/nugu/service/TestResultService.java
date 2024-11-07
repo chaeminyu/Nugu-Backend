@@ -7,6 +7,7 @@ import team8.nugu.dto.TestResultRequestDto;
 import team8.nugu.dto.TestResultResponseDto;
 import team8.nugu.entity.TestEntity;
 import team8.nugu.entity.TestResultEntity;
+import team8.nugu.entity.Users;
 import team8.nugu.repository.TestResultRepository;
 
 import java.util.Comparator;

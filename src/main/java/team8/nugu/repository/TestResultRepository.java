@@ -6,8 +6,6 @@ import team8.nugu.entity.TestResultEntity;
 import java.util.List;
 
 public interface TestResultRepository extends JpaRepository<TestResultEntity, Long> {
-    // 퀴즈 결과 정렬을 위한 메서드
-    List<TestResultEntity> findByTestIdOrderByCorrectAnswersDesc(Long testId);
 
     // 특정 테스트에 대한 결과 조회
     List<TestResultEntity> findByTestId(Long testId);

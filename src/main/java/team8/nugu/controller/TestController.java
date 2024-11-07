@@ -6,6 +6,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import team8.nugu.dto.TestRequestDto;
 import team8.nugu.entity.TestEntity;
+import team8.nugu.entity.Users;
 import team8.nugu.service.TestService;
 
 @RestController
@@ -28,5 +29,6 @@ public class TestController {
     @GetMapping("/{testId}")
     public ResponseEntity<TestEntity> getTest(@PathVariable Long testId){
         TestEntity test = testService.getTest(testId);
+        return ResponseEntity.ok(test);
     }
 }
