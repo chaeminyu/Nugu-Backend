@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import team8.nugu.dto.TestRequestDto;
 import team8.nugu.entity.TestEntity;
+import team8.nugu.entity.Users;
 import team8.nugu.repository.TestRepository;
 
 @Service
