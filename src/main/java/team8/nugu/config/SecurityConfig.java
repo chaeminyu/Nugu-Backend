@@ -18,6 +18,9 @@ import team8.nugu.config.filter.JWTFilter;
 import team8.nugu.config.filter.LoginFilter;
 import team8.nugu.config.jwt.JWTUtil;
 
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+
+
 import java.util.Collections;
 
 @Configuration
@@ -83,7 +86,7 @@ public class SecurityConfig {
 
         http
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/join", "/", "login").permitAll()
+                        .requestMatchers("/join", "/", "login", "/test-results/**").permitAll()
                         .anyRequest().authenticated());
         http
                 .addFilterBefore(new JWTFilter(jwtUtil), LoginFilter.class);
@@ -94,6 +97,7 @@ public class SecurityConfig {
         http
                 .sessionManagement((session) -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
 
         return http.build();
     }

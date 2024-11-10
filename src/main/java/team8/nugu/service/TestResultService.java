@@ -8,10 +8,12 @@ import team8.nugu.dto.TestResultResponseDto;
 import team8.nugu.entity.TestEntity;
 import team8.nugu.entity.TestResultEntity;
 import team8.nugu.entity.Users;
+import team8.nugu.repository.TestRepository;
 import team8.nugu.repository.TestResultRepository;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,41 +21,85 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class TestResultService {
     private final TestResultRepository testResultRepository;
-    private final TestService testService;
+    private final TestRepository testRepository;
 
-    // 퀴즈 결과 제출 처리 메서드
+    // 테스트 결과 제출 처리 메서드
     @Transactional
-    public TestResultResponseDto submitTestResult(TestResultRequestDto request, Users user) {
-        // 1. 요청 데이터 유효성 검사
-        if (!request.isValid()) {
-            throw new IllegalArgumentException("Invalid test result data");
+    public TestResultResponseDto submitTestResult(String uuid, TestResultRequestDto request) {
+        try {
+            //1. UUID 유효성 검사
+            if (uuid == null || uuid.trim().isEmpty()) {
+                throw new IllegalArgumentException("UUID는 null값일 수 없습니다");
+            }
+            //2. request 유효성 검사
+            if (request == null) {
+                throw new IllegalArgumentException("request는 null값일 수 없습니다.");
+            }
+            if(!request.isValid()) {
+                throw new IllegalArgumentException("테스트 결과가 유효하지 않습니다: 닉네임과 10문항에 대한 답변은 필수 항목입니다.");
+            }
+
+            // 1. UUID로 테스트 조회
+            TestEntity test = testRepository.findByUserUuid(uuid);
+            if (test == null) {
+                throw new IllegalArgumentException("해당 테스트는 존재하지 않습니다.");
+            }
+            // 2. 요청 데이터 유효성 검사
+            if (!request.isValid()) {
+                throw new IllegalArgumentException("요청 데이터가 유효하지 않습니다.");
+            }
+            // 3. 답안 채점
+            int correctCount = calculateCorrectAnswers(test.getAnswers(), request.getUserAnswers());
+            // 4. 결과 저장
+            TestResultEntity result = new TestResultEntity();
+            result.setTest(test);
+            result.setAnswers(request.getUserAnswers());
+            result.setNickname(request.getNickname());
+            testResultRepository.save(result);
+
+            // 5. 등수 계산
+            int rank = calculateRank(test.getId(), correctCount);
+            int totalParticipants = (int) testResultRepository.countByTestId(test.getId());
+
+            // 6. 응답 생성
+            return TestResultResponseDto.builder()
+                    .nickname(request.getNickname())
+                    .correctAnswers(correctCount) // 10점 만점 중 몇 점
+                    .rank(rank) // 등수
+                    .totalParticipants(totalParticipants) // 총 참여자 수
+                    .build();
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("UUID 포맷이 정확하지 않거나 테스트를 찾을 수 없습니다: " + uuid);
+        }
+    }
+
+    // UUID로 테스트 결과 목록(=순위표) 조회
+    public List<TestResultResponseDto> getTestResultsByUuid(String uuid) {
+        // 1. UUID로 테스트 조회
+        TestEntity test = testRepository.findByUserUuid(uuid);
+        if (test == null) {
+            throw new IllegalArgumentException("테스트가 존재하지 않습니다.");
         }
 
-        // 2. 퀴즈 정보 조회
-        TestEntity test = testService.getTest(request.getTestId());
+        // 2. 해당 테스트의 모든 결과 조회
+        List<TestResultEntity> results = testResultRepository.findByTestId(test.getId());
 
-        // 3. 답안 채점
-        int correctCount = calculateCorrectAnswers(test.getAnswers(), request.getUserAnswers());
-
-        // 4. 결과 저장
-        TestResultEntity result = new TestResultEntity();
-        result.setTest(test);
-        result.setUser(user);
-        result.setAnswers(request.getUserAnswers());
-        result.setNickname(request.getNickname());
-        testResultRepository.save(result);
-
-        // 5. 등수 계산
-        int rank = calculateRank(test.getId(), correctCount);
-        int totalParticipants = (int) testResultRepository.countByTestId(test.getId());
-
-        // 6. 응답 생성
-        return TestResultResponseDto.builder()
-                .nickname(request.getNickname())
-                .correctAnswers(correctCount) // 10점 만점 중 몇 점
-                .rank(rank) // 등수
-                .totalParticipants(totalParticipants) // 총 참여자 수
-                .build();
+        // 3. 각 결과를 DTO로 변환
+        return results.stream()
+                .map(result -> {
+                    int correctCount = calculateCorrectAnswers(
+                            test.getAnswers(),
+                            result.getAnswers()
+                    );
+                    int rank = calculateRank(test.getId(), correctCount);
+                    return TestResultResponseDto.builder()
+                            .nickname(result.getNickname())
+                            .correctAnswers(correctCount)
+                            .rank(rank)
+                            .totalParticipants(results.size())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     // 정답 개수 계산 메서드
@@ -74,35 +120,5 @@ public class TestResultService {
                 .sorted(Comparator.reverseOrder())
                 .collect(Collectors.toList());
         return scores.indexOf(correctCount) + 1;
-    }
-
-    // 특정 퀴즈의 모든 결과를 조회하는 메서드
-    public List<TestResultResponseDto> getTestResults(Long testId) {
-        // 해당 퀴즈의 모든 결과를 조회
-        List<TestResultEntity> results = testResultRepository.findByTestId(testId);
-
-        // 결과에 대해 DTO 반환
-        return results.stream()
-                .map(result -> {
-                    // 1. 각 결과의 점수 계산
-                    int correctCount = calculateCorrectAnswers(
-                            result.getTest().getAnswers(),
-                            result.getAnswers()
-                    );
-
-                    // 2. 해당 점수의 등수 계산
-                    int rank = calculateRank(testId, correctCount);
-
-                    // 3. 총 참여자 수 조회
-                    int totalParticipants = (int) testResultRepository.countByTestId(testId);
-
-                    // 4. DTO 생성 및 반환
-                    return TestResultResponseDto.builder()
-                            .nickname(result.getNickname())
-                            .correctAnswers(correctCount)
-                            .rank(rank)
-                            .totalParticipants(totalParticipants)
-                            .build();
-                }).collect(Collectors.toList());
     }
 }
