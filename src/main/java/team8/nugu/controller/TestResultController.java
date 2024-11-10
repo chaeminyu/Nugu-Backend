@@ -12,27 +12,35 @@ import team8.nugu.service.TestResultService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/test-results") // API 명세서를 기반으로 변경할 것- 임시
+@RequestMapping("/test-results")
 @RequiredArgsConstructor
 public class TestResultController {
     private final TestResultService testResultService;
 
-    // 퀴즈 답안 제출
-    @PostMapping
+    // UUID로 테스트 응시 및 결과 제출
+    @PostMapping("/submit/{uuid}")
     public ResponseEntity<TestResultResponseDto> submitTestResult(
-            @RequestBody TestResultRequestDto request,
-            @AuthenticationPrincipal Users user
+            @PathVariable String uuid,
+            @RequestBody TestResultRequestDto request
     ) {
-        TestResultResponseDto response = testResultService.submitTestResult(request, user);
-        return ResponseEntity.ok(response);
+        try {
+            TestResultResponseDto response = testResultService.submitTestResult(uuid, request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 
-    // 특정 퀴즈의 결과 목록 조회
-    @GetMapping("/quiz/{testId}")
+    // 특정 테스트의 순위표 조회
+    @GetMapping("/{uuid}/rankings")
     public ResponseEntity<List<TestResultResponseDto>> getTestResults(
-            @PathVariable Long testId
-    ){
-        List<TestResultResponseDto> results = testResultService.getTestResults(testId);
-        return ResponseEntity.ok(results);
+            @PathVariable String uuid
+    ) {
+        try {
+            List<TestResultResponseDto> results = testResultService.getTestResultsByUuid(uuid);
+            return ResponseEntity.ok(results);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 }

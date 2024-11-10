@@ -8,6 +8,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import team8.nugu.config.jwt.JWTUtil;
 import team8.nugu.dto.TestRequestDto;
+import team8.nugu.dto.TestStatusResponseDto;
 import team8.nugu.entity.TestEntity;
 import team8.nugu.entity.Users;
 import team8.nugu.repository.UserRepository;
@@ -20,6 +21,28 @@ public class TestController {
     private final TestService testService;
     private final JWTUtil jwtUtil;
     private final UserRepository userRepository;
+
+    // 사용자 테스트 생성 여부 확인
+    @GetMapping("/status")
+    public ResponseEntity<TestStatusResponseDto> checkTestStatus(HttpServletRequest request) {
+        // 1. Authorization 헤더에서 토큰 추출 및 검증
+        String token = request.getHeader("Authorization");
+        if(token == null || token.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String accessToken = token.substring(7);
+        String username = jwtUtil.getUsername(accessToken);
+        Users user = userRepository.findByUsername(username);
+
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        //2. 사용자의 테스트 생성 여부 확인
+        TestStatusResponseDto status = testService.checkTestStatus(user);
+        return ResponseEntity.ok(status);
+    }
 
     // 퀴즈 생성
     @PostMapping
